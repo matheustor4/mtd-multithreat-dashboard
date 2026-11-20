@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MTD Multi-Threat Risk Assessment Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="data/dashboard_data.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-alt: #f1f5f9;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --accent: #0072B2;
+      --accent-soft: #e0f2fe;
+      --green: #009E73;
+      --amber: #E69F00;
+      --orange: #D55E00;
+      --black: #0f172a;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    /* Top Header */
+    header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 65%, #0c4a6e 100%);
+      color: #f8fafc;
+      padding: 2rem 1.5rem 1.5rem;
+      border-bottom: 3px solid var(--accent);
+    }
+    .container {
+      max-width: 1220px;
+      margin: 0 auto;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    .badge.highlight {
+      background: rgba(0, 114, 178, 0.35);
+      border-color: rgba(56, 189, 248, 0.45);
+      color: #e0f2fe;
+    }
+    header h1 {
+      margin: 0 0 0.5rem;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.35rem, 2.4vw, 1.95rem);
+      font-weight: 700;
+      line-height: 1.25;
+      color: #ffffff;
+    }
+    header p.subtitle {
+      margin: 0 0 1.25rem;
+      color: #cbd5e1;
+      font-size: 0.95rem;
+      max-width: 900px;
+    }
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+    }
+    .nav-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .nav-pill:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.35);
+    }
+    .nav-pill.primary {
+      background: var(--accent);
+      border-color: #38bdf8;
+    }
+    .nav-pill.primary:hover {
+      background: #0284c7;
+    }
+
+    main {
+      padding: 1.5rem 1.25rem 3rem;
+    }
+
+    /* Cards & Sections */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 1.65rem;
+    }
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.85rem;
+    }
+    .section-title {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .module-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.55rem;
+      border-radius: 5px;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .section-desc {
+      margin: 0.35rem 0 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      max-width: 860px;
+    }
+
+    /* Controls bar */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      align-items: center;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .control-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-right: 0.25rem;
+    }
+
+    /* Buttons & Toggles */
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      font-size: 0.83rem;
+      font-weight: 600;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      border-color: #94a3b8;
+      background: #f8fafc;
+    }
+    .btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+    .btn.small {
+      font-size: 0.78rem;
+      padding: 0.3rem 0.6rem;
+    }
+    .btn.secondary {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+    .btn.secondary:hover {
+      background: #1e293b;
+    }
+
+    .sched-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.32rem 0.68rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1.5px solid var(--border);
+      background: #ffffff;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s;
+    }
+    .sched-pill.inactive {
+      opacity: 0.42;
+      background: #f1f5f9;
+    }
+    .swatch {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* KPI Strip */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .kpi-box {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 0.7rem 0.85rem;
+    }
+    .kpi-box .kpi-title {
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .kpi-box .kpi-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0.15rem 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-box .kpi-sub {
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Two-column grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .grid-2-eq {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .grid-2, .grid-2-eq { grid-template-columns: 1fr; }
+    }
+
+    /* Sliders */
+    .slider-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.95rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    .slider-item label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.84rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    .slider-val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .preset-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.35rem;
+    }
+
+    /* Callout banner */
+    .callout {
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid #bae6fd;
+      background: #f0f9ff;
+      font-size: 0.88rem;
+    }
+    .callout.warn {
+      border-color: #fed7aa;
+      background: #fff7ed;
+    }
+    .callout strong {
+      color: #0c4a6e;
+    }
+    .callout.warn strong {
+      color: #9a3412;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      font-variant-numeric: tabular-nums;
+    }
+    th, td {
+      padding: 0.58rem 0.7rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: var(--surface-alt);
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    td:first-child, th:first-child {
+      text-align: left;
+    }
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    tbody tr.recommended-row {
+      background: #ecfdf5;
+    }
+    .status-pass {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #dcfce7;
+      color: #166534;
+    }
+    .status-fail {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.82rem;
+    }
+
+    /* Plots */
+    .plot-box {
+      width: 100%;
+      min-height: 410px;
+    }
+    .plot-box-compact {
+      width: 100%;
+      min-height: 360px;
+    }
+
+    /* BibTeX block */
+    pre.bibtex {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 1rem 1.15rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      margin: 0.75rem 0 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem 2.5rem;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="badges">
+      <span class="badge highlight">Interactive Companion Artifact</span>
+      <span class="badge">Stochastic Petri Nets (TimeNET)</span>
+      <span class="badge">720-Hour Transient Horizon</span>
+      <span class="badge">15 Raw Datasets Included</span>
+    </div>
+    <h1>Quantifying Time-Based Moving Target Defense Against Simultaneous Persistent and Non-Persistent Threats</h1>
+    <p class="subtitle">
+      Interactive evaluation dashboard for inspecting transient compromise probabilities (<strong>PAS-NP</strong>, <strong>PAS-P</strong>),
+      <strong>Elusiveness</strong>, <strong>Latent Foothold Risk</strong>, and risk-weighted <strong>Composite Protective Effects (PE<sub>H</sub><sup>AUC</sup>)</strong>
+      across fixed time-based MTD schedules (15m, 30m, 45m, 60m) versus an undefended baseline.
+    </p>
+    <div class="header-actions">
+      <a class="nav-pill" href="#mod-transient">1. Transient Explorer</a>
+      <a class="nav-pill" href="#mod-composite">2. Composite PE Simulator</a>
+      <a class="nav-pill" href="#mod-foothold">3. Latent Foothold</a>
+      <a class="nav-pill" href="#mod-downloads">4. Raw CSV Downloads</a>
+      <a class="nav-pill primary" href="https://github.com/matheustor4/mtd-multithreat-dashboard" target="_blank" rel="noopener">GitHub Repository ↗</a>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- MODULE 1: TRANSIENT EXPLORER -->
+  <section id="mod-transient" class="card">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title"><span class="module-tag">Module 1</span> Transient Evolution Explorer</h2>
+        <p class="section-desc">
+          Compare transient trajectories over one month (720 hours). Toggle individual MTD schedules, inspect 95% confidence intervals (CIs), and zoom into early operational windows.
+        </p>
+      </div>
+      <div class="control-group">
+        <button class="btn small" onclick="setTransientZoom(0, 720)">Full Month (720h)</button>
+        <button class="btn small" onclick="setTransientZoom(0, 168)">1 Week (168h)</button>
+        <button class="btn small" onclick="setTransientZoom(0, 72)">3 Days (72h)</button>
+        <button class="btn small" onclick="setTransientZoom(0, 24)">24 Hours</button>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="control-group" id="metric-buttons">
+        <span class="control-label">Metric:</span>
+        <button class="btn active" data-metric="pas_p" onclick="selectMetric('pas_p')">PAS-P (Persistent)</button>
+        <button class="btn" data-metric="pas_np" onclick="selectMetric('pas_np')">PAS-NP (Non-Persistent)</button>
+        <button class="btn" data-metric="elusiveness" onclick="selectMetric('elusiveness')">Elusiveness</button>
+      </div>
+
+      <div class="control-group" id="schedule-toggles">
+        <span class="control-label">Schedules:</span>
+      </div>
+
+      <div class="control-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="toggle-ci" checked onchange="renderTransient()" />
+          Show 95% CI Bands
+        </label>
+        <label class="checkbox-label" id="focus-y-wrap" style="display:none; margin-left:0.5rem;">
+          <input type="checkbox" id="toggle-focus-y" checked onchange="renderTransient()" />
+          Zoom Y-axis to MTD range (0–4.2%)
+        </label>
+      </div>
+    </div>
+
+    <div id="plot-transient" class="plot-box"></div>
+    <div id="transient-kpis" class="kpi-grid"></div>
+  </section>
+
+  <!-- MODULE 2: COMPOSITE PROTECTIVE EFFECT SIMULATOR -->
+  <section id="mod-composite" class="card">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title"><span class="module-tag">Module 2</span> Unified Composite Protective Effect Simulator (PE<sub>H</sub><sup>AUC</sup>)</h2>
+        <p class="section-desc">
+          Dynamically explore how schedule suitability varies with organizational persistent-threat priority (<em>w<sub>P</sub></em>) and mission horizon (<em>H</em>).
+          Integrates transient exposure via Area Under the Curve (&Delta;<sup>AUC</sup>) and aggregates threats using a non-compensatory weighted harmonic mean.
+        </p>
+      </div>
+      <div class="control-group">
+        <button class="btn small secondary" onclick="exportCompositeCSV()">Export Table (CSV)</button>
+      </div>
+    </div>
+
+    <div class="slider-grid">
+      <div class="slider-item">
+        <label for="slider-wp">
+          <span>Persistent Threat Weight (<em>w<sub>P</sub></em>)</span>
+          <span class="slider-val" id="val-wp">50% (50P / 50NP)</span>
+        </label>
+        <input type="range" id="slider-wp" min="0" max="100" step="1" value="50" oninput="renderComposite()" />
+        <div class="preset-bar">
+          <button class="btn small" onclick="setWp(25)">Avail.-centric (25P)</button>
+          <button class="btn small" onclick="setWp(50)">Balanced (50P)</button>
+          <button class="btn small" onclick="setWp(75)">APT-centric (75P)</button>
+        </div>
+      </div>
+
+      <div class="slider-item">
+        <label for="slider-horizon">
+          <span>Mission Horizon (<em>H</em>)</span>
+          <span class="slider-val" id="val-horizon">720 h (30.0 days)</span>
+        </label>
+        <input type="range" id="slider-horizon" min="24" max="720" step="12" value="720" oninput="renderComposite()" />
+        <div class="preset-bar">
+          <button class="btn small" onclick="setHorizon(24)">24h</button>
+          <button class="btn small" onclick="setHorizon(168)">168h (1 wk)</button>
+          <button class="btn small" onclick="setHorizon(360)">360h (15 d)</button>
+          <button class="btn small" onclick="setHorizon(720)">720h (30 d)</button>
+        </div>
+      </div>
+
+      <div class="slider-item">
+        <label for="slider-target">
+          <span>Protection Target Threshold</span>
+          <span class="slider-val" id="val-target">80%</span>
+        </label>
+        <input type="range" id="slider-target" min="50" max="98" step="1" value="80" oninput="renderComposite()" />
+        <div class="preset-bar" style="align-items:center;">
+          <label class="checkbox-label" style="font-size:0.78rem;">
+            <input type="checkbox" id="toggle-arith" onchange="renderComposite()" />
+            Overlay Compensatory Arithmetic Mean (for contrast)
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div id="composite-callout" class="callout"></div>
+
+    <div class="grid-2">
+      <div>
+        <div id="plot-composite" class="plot-box"></div>
+      </div>
+      <div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Sched.</th>
+                <th>Rot. (in H)</th>
+                <th>&Delta;<sub>NP</sub><sup>AUC</sup></th>
+                <th>&Delta;<sub>P</sub><sup>AUC</sup></th>
+                <th>PE<sub>H</sub><sup>AUC</sup></th>
+                <th id="th-arith" style="display:none;">PE<sub>A</sub><sup>AUC</sup></th>
+                <th>Target</th>
+              </tr>
+            </thead>
+            <tbody id="composite-tbody"></tbody>
+          </table>
+        </div>
+        <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.6rem;">
+          <strong>Note:</strong> Baseline cumulative exposure over <span id="note-h">720</span> h equals
+          <span class="mono" id="note-bnp">695.53</span> h (non-persistent) and <span class="mono" id="note-bp">695.16</span> h (persistent).
+          Green highlight marks the lowest-overhead schedule meeting the protection target.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODULE 3: LATENT FOOTHOLD DECOMPOSITION -->
+  <section id="mod-foothold" class="card">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title"><span class="module-tag">Module 3</span> Persistent State-Space Decomposition &amp; Latent Foothold Risk</h2>
+        <p class="section-desc">
+          Inspect the mutually exclusive persistent state partition at any mission instant <em>t</em>:
+          <strong>Clean (Elusiveness)</strong>, <strong>Latent Foothold (<em>P</em><sub>FH</sub>)</strong>, and <strong>Compromised (PAS-P)</strong>.
+          Explore how tighter MTD intervals shift the transient "foothold wave" forward while conditional foothold risk <em>P</em>(FH | Surv.) remains ~28–32% at one month.
+        </p>
+      </div>
+    </div>
+
+    <div class="slider-grid" style="grid-template-columns: 1fr;">
+      <div class="slider-item">
+        <label for="slider-fh-t">
+          <span>Inspection Time Instant (<em>t</em>)</span>
+          <span class="slider-val" id="val-fh-t">720 h (30.0 days)</span>
+        </label>
+        <input type="range" id="slider-fh-t" min="1" max="720" step="1" value="720" oninput="renderFoothold()" />
+        <div class="preset-bar">
+          <button class="btn small" onclick="setFhTime(24)">24h (1 day)</button>
+          <button class="btn small" onclick="setFhTime(168)">168h (1 week)</button>
+          <button class="btn small" onclick="setFhTime(360)">360h (15 days)</button>
+          <button class="btn small" onclick="setFhTime(720)">720h (30 days / Paper Table III)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2-eq">
+      <div id="plot-fh-stack" class="plot-box-compact"></div>
+      <div id="plot-fh-wave" class="plot-box-compact"></div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:1rem;">
+      <table>
+        <thead>
+          <tr>
+            <th>Schedule</th>
+            <th>PAS-P (Compromised)</th>
+            <th>Surv. (1 &minus; PAS-P)</th>
+            <th>Elusiveness (Clean)</th>
+            <th>Latent Foothold (<em>P</em><sub>FH</sub>)</th>
+            <th>Conditional <em>P</em>(FH | Surv.)</th>
+          </tr>
+        </thead>
+        <tbody id="foothold-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- MODULE 4: REPRODUCIBILITY & RAW DATA DOWNLOADS -->
+  <section id="mod-downloads" class="card">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title"><span class="module-tag">Module 4</span> Raw TimeNET Datasets &amp; Reproducibility Hub</h2>
+        <p class="section-desc">
+          Download the exact raw TimeNET <code>.STAT_OUT.csv</code> simulation outputs (semicolon-delimited: time, mean, 95% CI, relative half-width &epsilon;, variance) used to generate all figures and tables in the paper.
+        </p>
+      </div>
+      <div class="control-group">
+        <a class="btn secondary" href="data/mtd_timenet_raw_csvs.zip" download>Download All 15 Raw CSVs (.zip)</a>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="control-group">
+        <span class="control-label">Filter Metric:</span>
+        <button class="btn small active" data-dlfilter="all" onclick="filterDownloads('all')">All (15)</button>
+        <button class="btn small" data-dlfilter="pas_np" onclick="filterDownloads('pas_np')">PAS-NP (5)</button>
+        <button class="btn small" data-dlfilter="pas_p" onclick="filterDownloads('pas_p')">PAS-P (5)</button>
+        <button class="btn small" data-dlfilter="elusiveness" onclick="filterDownloads('elusiveness')">Elusiveness (5)</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Metric</th>
+            <th>Schedule</th>
+            <th>Replications (<em>n</em>)</th>
+            <th>720h Mean &plusmn; 95% CI</th>
+            <th>Size</th>
+            <th>Download</th>
+          </tr>
+        </thead>
+        <tbody id="downloads-tbody"></tbody>
+      </table>
+    </div>
+<!--
+    <div style="margin-top:1.25rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+        <h3 style="margin:0; font-size:0.95rem;">How to Cite</h3>
+        <button class="btn small" id="btn-copy-bib" onclick="copyBibtex()">Copy BibTeX</button>
+      </div>
+      <pre class="bibtex" id="bibtex-code">@article{torquato2026quantifying,
+  author  = {Torquato, Matheus},
+  title   = {Quantifying Time-Based Moving Target Defense Against Simultaneous Persistent and Non-Persistent Threats: A Stochastic Petri Net Evaluation},
+  journal = {Computers \&amp; Security (Submitted)},
+  year    = {2026},
+  note    = {Interactive companion dashboard and raw TimeNET datasets available at \url{https://matheustor4.github.io/mtd-multithreat-dashboard/}}
+}</pre>
+    </div>
+    
+    -->
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    Companion Artifact for <em>Quantifying Time-Based Moving Target Defense Against Simultaneous Persistent and Non-Persistent Threats</em> &bull;
+    <a href="https://github.com/matheustor4/mtd-multithreat-dashboard" target="_blank" rel="noopener">GitHub Repository</a> &bull;
+    Licensed under MIT License.
+  </div>
+</footer>
+
+<script>
+  const DATA = window.MTD_DATA;
+  const TIME = DATA.time;
+  const SCHEDS = DATA.meta.schedules; // 15m, 30m, 45m, 60m, Baseline
+  const MTD_ONLY = SCHEDS.filter(s => s.id !== "Baseline"); // 15m, 30m, 45m, 60m
+  const MTD_ASC = ["60m", "45m", "30m", "15m"].map(id => SCHEDS.find(s => s.id === id));
+
+  let activeMetric = "pas_p";
+  let visibleScheds = new Set(["15m", "30m", "45m", "60m", "Baseline"]);
+  let transientXRange = [0, 720];
+  let activeDlFilter = "all";
+  let latestCompositeRows = [];
+
+  function hexToRgba(hex, alpha) {
+    const c = hex.replace("#", "");
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function findTimeIndex(tTarget) {
+    let bestIdx = 0;
+    let bestDiff = Infinity;
+    for (let i = 0; i < TIME.length; i++) {
+      const d = Math.abs(TIME[i] - tTarget);
+      if (d < bestDiff) {
+        bestDiff = d;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  function trapzHours(yPct, idxEnd) {
+    let area = 0.0;
+    for (let i = 0; i < idxEnd; i++) {
+      area += 0.5 * (yPct[i] + yPct[i + 1]) / 100.0 * (TIME[i + 1] - TIME[i]);
+    }
+    return area;
+  }
+
+  function peHarmonic(wpFrac, dp, dnp) {
+    if (dp <= 0 && wpFrac > 0) return 0;
+    if (dnp <= 0 && wpFrac < 1) return 0;
+    if (wpFrac <= 0) return dnp;
+    if (wpFrac >= 1) return dp;
+    return 1.0 / (wpFrac / dp + (1.0 - wpFrac) / dnp);
+  }
+
+  function peArithmetic(wpFrac, dp, dnp) {
+    return wpFrac * dp + (1.0 - wpFrac) * dnp;
+  }
+
+  // ===== INIT SCHEDULE TOGGLES =====
+  function initScheduleToggles() {
+    const wrap = document.getElementById("schedule-toggles");
+    SCHEDS.forEach(s => {
+      const btn = document.createElement("button");
+      btn.className = "sched-pill";
+      btn.dataset.sched = s.id;
+      btn.innerHTML = `<span class="swatch" style="background:${s.color}"></span>${s.label}`;
+      btn.onclick = () => {
+        if (visibleScheds.has(s.id)) {
+          if (visibleScheds.size > 1) visibleScheds.delete(s.id);
+        } else {
+          visibleScheds.add(s.id);
+        }
+        updateSchedulePills();
+        renderTransient();
+      };
+      wrap.appendChild(btn);
+    });
+  }
+
+  function updateSchedulePills() {
+    document.querySelectorAll("#schedule-toggles .sched-pill").forEach(btn => {
+      const sid = btn.dataset.sched;
+      btn.classList.toggle("inactive", !visibleScheds.has(sid));
+    });
+  }
+
+  // ===== MODULE 1: TRANSIENT EXPLORER =====
+  function selectMetric(m) {
+    activeMetric = m;
+    document.querySelectorAll("#metric-buttons .btn").forEach(b => {
+      b.classList.toggle("active", b.dataset.metric === m);
+    });
+    const focusWrap = document.getElementById("focus-y-wrap");
+    focusWrap.style.display = (m === "pas_np") ? "inline-flex" : "none";
+    renderTransient();
+  }
+
+  function setTransientZoom(t0, t1) {
+    transientXRange = [t0, t1];
+    renderTransient();
+  }
+
+  function renderTransient() {
+    const showCI = document.getElementById("toggle-ci").checked;
+    const focusY = (activeMetric === "pas_np") && document.getElementById("toggle-focus-y").checked;
+    const mData = DATA.metrics[activeMetric];
+    const traces = [];
+
+    SCHEDS.forEach(s => {
+      if (!visibleScheds.has(s.id)) return;
+      const series = mData[s.id];
+
+      if (showCI) {
+        traces.push({
+          x: TIME,
+          y: series.ci_high,
+          type: "scatter",
+          mode: "lines",
+          line: { width: 0 },
+          showlegend: false,
+          hoverinfo: "skip",
+          name: `${s.label} CI High`
+        });
+        traces.push({
+          x: TIME,
+          y: series.ci_low,
+          type: "scatter",
+          mode: "lines",
+          line: { width: 0 },
+          fill: "tonexty",
+          fillcolor: hexToRgba(s.color, 0.14),
+          showlegend: false,
+          hoverinfo: "skip",
+          name: `${s.label} CI Low`
+        });
+      }
+
+      const custom = series.mean.map((val, idx) => [
+        series.ci_low[idx],
+        series.ci_high[idx],
+        (series.ci_high[idx] - series.ci_low[idx]) / 2.0,
+        series.n_samples
+      ]);
+
+      traces.push({
+        x: TIME,
+        y: series.mean,
+        customdata: custom,
+        type: "scatter",
+        mode: "lines",
+        name: s.label,
+        line: { color: s.color, width: 2.5, dash: s.dash },
+        hovertemplate:
+          `<b>${s.label}</b>: %{y:.2f}%<br>` +
+          `<span style="font-size:11px;">95% CI: [%{customdata[0]:.2f}%, %{customdata[1]:.2f}%] (&plusmn;%{customdata[2]:.2f} pp, n=%{customdata[3]:,})</span>` +
+          `<extra></extra>`
+      });
+    });
+
+    const yTitles = {
+      pas_np: "PAS-NP (%)",
+      pas_p: "PAS-P (%)",
+      elusiveness: "Elusiveness (%)"
+    };
+    const yRange = focusY ? [0, 4.2] : [0, 105];
+
+    const layout = {
+      margin: { t: 42, r: 22, b: 52, l: 62 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      font: { family: "Georgia, 'Times New Roman', serif", size: 13, color: "#0f172a" },
+      hovermode: "x unified",
+      xaxis: {
+        title: "Time (hours)",
+        range: transientXRange,
+        gridcolor: "#e2e8f0",
+        zeroline: false,
+        dtick: transientXRange[1] <= 72 ? 12 : (transientXRange[1] <= 168 ? 24 : 120)
+      },
+      yaxis: {
+        title: yTitles[activeMetric],
+        range: yRange,
+        ticksuffix: "%",
+        gridcolor: "#e2e8f0",
+        zeroline: false
+      },
+      legend: {
+        orientation: "h",
+        x: 0.5,
+        xanchor: "center",
+        y: 1.13,
+        bgcolor: "rgba(255,255,255,0)"
+      }
+    };
+
+    Plotly.react("plot-transient", traces, layout, {
+      responsive: true,
+      displaylogo: false,
+      toImageButtonOptions: { format: "png", filename: `MTD_${activeMetric}_transient`, scale: 2 }
+    });
+
+    // Render KPI strip at current right-hand horizon
+    const idxEnd = findTimeIndex(transientXRange[1]);
+    const tLabel = Math.round(TIME[idxEnd]);
+    const baseVal = mData["Baseline"].mean[idxEnd];
+    const kpiWrap = document.getElementById("transient-kpis");
+    kpiWrap.innerHTML = "";
+
+    SCHEDS.forEach(s => {
+      const ser = mData[s.id];
+      const val = ser.mean[idxEnd];
+      const hw = (ser.ci_high[idxEnd] - ser.ci_low[idxEnd]) / 2.0;
+      let diffText = "Undefended Reference";
+      if (s.id !== "Baseline") {
+        if (activeMetric === "elusiveness") {
+          const gain = val - baseVal;
+          diffText = `+${gain.toFixed(2)} pp vs. Baseline`;
+        } else {
+          const red = baseVal - val;
+          diffText = `${red >= 0 ? "-" : "+"}${Math.abs(red).toFixed(2)} pp vs. Baseline`;
+        }
+      }
+      const box = document.createElement("div");
+      box.className = "kpi-box";
+      box.style.borderTopColor = s.color;
+      box.innerHTML = `
+        <div class="kpi-title">${s.label} @ ${tLabel}h</div>
+        <div class="kpi-val">${val.toFixed(2)}%</div>
+        <div class="kpi-sub">95% CI: &plusmn;${hw.toFixed(2)} pp (n=${ser.n_samples.toLocaleString()})</div>
+        <div class="kpi-sub" style="margin-top:0.15rem; font-weight:600;">${diffText}</div>
+      `;
+      kpiWrap.appendChild(box);
+    });
+  }
+
+  // ===== MODULE 2: COMPOSITE PROTECTIVE EFFECT SIMULATOR =====
+  function setWp(v) {
+    document.getElementById("slider-wp").value = v;
+    renderComposite();
+  }
+  function setHorizon(h) {
+    document.getElementById("slider-horizon").value = h;
+    renderComposite();
+  }
+
+  function renderComposite() {
+    const wpPct = parseInt(document.getElementById("slider-wp").value, 10);
+    const wpFrac = wpPct / 100.0;
+    const H = parseInt(document.getElementById("slider-horizon").value, 10);
+    const target = parseInt(document.getElementById("slider-target").value, 10);
+    const showArith = document.getElementById("toggle-arith").checked;
+
+    document.getElementById("val-wp").textContent = `${wpPct}% (${wpPct}P / ${100 - wpPct}NP)`;
+    document.getElementById("val-horizon").textContent = `${H} h (${(H / 24).toFixed(1)} days)`;
+    document.getElementById("val-target").textContent = `${target}%`;
+    document.getElementById("th-arith").style.display = showArith ? "" : "none";
+
+    const idxH = findTimeIndex(H);
+    const actualH = TIME[idxH];
+    const bNP = trapzHours(DATA.metrics.pas_np["Baseline"].mean, idxH);
+    const bP  = trapzHours(DATA.metrics.pas_p["Baseline"].mean, idxH);
+
+    document.getElementById("note-h").textContent = Math.round(actualH);
+    document.getElementById("note-bnp").textContent = bNP.toFixed(2);
+    document.getElementById("note-bp").textContent = bP.toFixed(2);
+
+    const wGrid = [];
+    for (let w = 0; w <= 100; w += 1) wGrid.push(w);
+
+    const traces = [];
+    const rows = [];
+
+    // Compute per schedule (order: 60m, 45m, 30m, 15m for table)
+    MTD_ASC.forEach(s => {
+      const aNP = trapzHours(DATA.metrics.pas_np[s.id].mean, idxH);
+      const aP  = trapzHours(DATA.metrics.pas_p[s.id].mean, idxH);
+      const dNP = bNP > 0 ? Math.max(0, (bNP - aNP) / bNP * 100.0) : 0;
+      const dP  = bP  > 0 ? Math.max(0, (bP  - aP)  / bP  * 100.0) : 0;
+      const peH = peHarmonic(wpFrac, dP, dNP);
+      const peA = peArithmetic(wpFrac, dP, dNP);
+      const rotInH = Math.round(s.rot_per_month * (actualH / 720.0));
+      rows.push({
+        id: s.id,
+        label: s.label,
+        color: s.color,
+        dash: s.dash,
+        rot: rotInH,
+        aNP, aP, dNP, dP, peH, peA,
+        meets: peH >= target
+      });
+    });
+    latestCompositeRows = rows;
+
+    // Lowest-overhead schedule meeting target
+    const rec = rows.find(r => r.meets);
+    const callout = document.getElementById("composite-callout");
+    if (rec) {
+      callout.className = "callout";
+      callout.innerHTML =
+        `<strong>Recommended Minimum-Overhead Schedule:</strong> <code>${rec.id}</code> ` +
+        `achieves <strong>${rec.peH.toFixed(2)}%</strong> composite protection (target &ge; ${target}%) at ` +
+        `<em>w<sub>P</sub></em> = ${wpPct}% over ${Math.round(actualH)} h, requiring <strong>${rec.rot.toLocaleString()}</strong> reconfigurations.`;
+    } else {
+      const best = rows[rows.length - 1];
+      callout.className = "callout warn";
+      callout.innerHTML =
+        `<strong>Target Not Met (${target}%):</strong> Even the tightest schedule (<code>15m</code>, ${best.rot.toLocaleString()} rotations) ` +
+        `reaches <strong>${best.peH.toFixed(2)}%</strong> at <em>w<sub>P</sub></em> = ${wpPct}% over ${Math.round(actualH)} h. ` +
+        `Consider tightening below 15m or pairing MTD with detection-triggered remediation.`;
+    }
+
+    // Build Plotly traces (plot 15m, 30m, 45m, 60m order in legend)
+    [...rows].reverse().forEach(r => {
+      const yH = wGrid.map(w => peHarmonic(w / 100.0, r.dP, r.dNP));
+      traces.push({
+        x: wGrid,
+        y: yH,
+        type: "scatter",
+        mode: "lines",
+        name: `MTD ${r.id}`,
+        line: { color: r.color, width: 2.6, dash: r.dash },
+        hovertemplate: `<b>MTD ${r.id} (Harmonic)</b>: %{y:.2f}%<extra></extra>`
+      });
+      // Active point marker at current wP
+      traces.push({
+        x: [wpPct],
+        y: [r.peH],
+        type: "scatter",
+        mode: "markers",
+        showlegend: false,
+        marker: { color: r.color, size: 9, line: { color: "#ffffff", width: 1.5 } },
+        hoverinfo: "skip"
+      });
+      if (showArith) {
+        const yA = wGrid.map(w => peArithmetic(w / 100.0, r.dP, r.dNP));
+        traces.push({
+          x: wGrid,
+          y: yA,
+          type: "scatter",
+          mode: "lines",
+          name: `MTD ${r.id} (Arith.)`,
+          line: { color: hexToRgba(r.color, 0.45), width: 1.6, dash: "dot" },
+          hovertemplate: `<b>MTD ${r.id} (Arithmetic)</b>: %{y:.2f}%<extra></extra>`
+        });
+      }
+    });
+
+    const minVal = Math.min(...rows.map(r => r.dP), target - 5, 38);
+    const yMin = Math.max(0, Math.floor((minVal - 4) / 10) * 10);
+
+    const layout = {
+      margin: { t: 42, r: 18, b: 54, l: 62 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      font: { family: "Georgia, 'Times New Roman', serif", size: 12.5, color: "#0f172a" },
+      hovermode: "x unified",
+      xaxis: {
+        title: "Persistent Threat Weight (w<sub>P</sub>, with w<sub>NP</sub> = 1 &minus; w<sub>P</sub>)",
+        range: [0, 100],
+        dtick: 25,
+        ticksuffix: "%",
+        gridcolor: "#e2e8f0"
+      },
+      yaxis: {
+        title: "Composite Protective Effect (%)",
+        range: [yMin, 104],
+        ticksuffix: "%",
+        gridcolor: "#e2e8f0"
+      },
+      legend: {
+        orientation: "h",
+        x: 0.5,
+        xanchor: "center",
+        y: 1.13,
+        bgcolor: "rgba(255,255,255,0)"
+      },
+      shapes: [
+        {
+          type: "line", x0: wpPct, x1: wpPct, y0: yMin, y1: 104,
+          line: { color: "#0f172a", width: 1.2, dash: "dot" }
+        },
+        {
+          type: "line", x0: 0, x1: 100, y0: target, y1: target,
+          line: { color: "#dc2626", width: 1.4, dash: "dash" }
+        }
+      ],
+      annotations: [
+        {
+          x: 99, y: target, xanchor: "right", yanchor: "bottom",
+          text: `Target: ${target}%`,
+          showarrow: false,
+          font: { size: 11, color: "#dc2626" },
+          bgcolor: "rgba(255,255,255,0.85)"
+        }
+      ]
+    };
+
+    Plotly.react("plot-composite", traces, layout, {
+      responsive: true,
+      displaylogo: false,
+      toImageButtonOptions: { format: "png", filename: `MTD_Composite_PE_H${H}`, scale: 2 }
+    });
+
+    // Populate table
+    const tbody = document.getElementById("composite-tbody");
+    tbody.innerHTML = "";
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      if (rec && r.id === rec.id) tr.className = "recommended-row";
+      tr.innerHTML = `
+        <td><span class="swatch" style="background:${r.color}; margin-right:6px;"></span><strong>${r.id}</strong></td>
+        <td class="mono">${r.rot.toLocaleString()}</td>
+        <td>${r.dNP.toFixed(2)}%</td>
+        <td>${r.dP.toFixed(2)}%</td>
+        <td><strong>${r.peH.toFixed(2)}%</strong></td>
+        ${showArith ? `<td style="color:#475569;">${r.peA.toFixed(2)}%</td>` : ""}
+        <td>${r.meets ? '<span class="status-pass">Meets</span>' : '<span class="status-fail">Below</span>'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function exportCompositeCSV() {
+    const wpPct = document.getElementById("slider-wp").value;
+    const H = document.getElementById("slider-horizon").value;
+    const target = document.getElementById("slider-target").value;
+    const lines = [
+      `# MTD Composite Protective Effect Export (w_P=${wpPct}%, H=${H}h, Target=${target}%)`,
+      "Schedule,Rotations_in_H,AUC_NP_hours,Delta_AUC_NP_pct,AUC_P_hours,Delta_AUC_P_pct,PE_Harmonic_pct,PE_Arithmetic_pct,Meets_Target"
+    ];
+    latestCompositeRows.forEach(r => {
+      lines.push([
+        r.id, r.rot, r.aNP.toFixed(4), r.dNP.toFixed(4),
+        r.aP.toFixed(4), r.dP.toFixed(4), r.peH.toFixed(4), r.peA.toFixed(4), r.meets
+      ].join(","));
+    });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `MTD_Composite_PE_wP${wpPct}_H${H}h.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ===== MODULE 3: LATENT FOOTHOLD DECOMPOSITION =====
+  function setFhTime(t) {
+    document.getElementById("slider-fh-t").value = t;
+    renderFoothold();
+  }
+
+  function renderFoothold() {
+    const tVal = parseInt(document.getElementById("slider-fh-t").value, 10);
+    const idx = findTimeIndex(tVal);
+    const actualT = TIME[idx];
+    document.getElementById("val-fh-t").textContent = `${Math.round(actualT)} h (${(actualT / 24).toFixed(1)} days)`;
+
+    const orderIds = ["Baseline", "60m", "45m", "30m", "15m"];
+    const labels = [];
+    const elusVals = [];
+    const fhVals = [];
+    const paspVals = [];
+
+    const tbody = document.getElementById("foothold-tbody");
+    tbody.innerHTML = "";
+
+    orderIds.forEach(sid => {
+      const sObj = SCHEDS.find(s => s.id === sid);
+      const pasp = DATA.metrics.pas_p[sid].mean[idx];
+      const elus = DATA.metrics.elusiveness[sid].mean[idx];
+      const surv = Math.max(0, 100.0 - pasp);
+      const fh   = Math.max(0, surv - elus);
+      const cond = surv > 0.01 ? (fh / surv * 100.0) : null;
+
+      labels.push(sid);
+      elusVals.push(elus);
+      fhVals.push(fh);
+      paspVals.push(pasp);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="swatch" style="background:${sObj.color}; margin-right:6px;"></span><strong>${sObj.label}</strong></td>
+        <td>${pasp.toFixed(2)}%</td>
+        <td>${surv.toFixed(2)}%</td>
+        <td>${elus.toFixed(2)}%</td>
+        <td><strong>${fh.toFixed(2)}%</strong></td>
+        <td><strong>${cond !== null ? cond.toFixed(2) + "%" : "N/A"}</strong></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // Stacked bar chart at time t
+    const stackTraces = [
+      {
+        x: labels, y: elusVals, name: "Clean (Elusiveness)", type: "bar",
+        marker: { color: "#009E73" },
+        hovertemplate: "<b>Clean (Elusiveness)</b>: %{y:.2f}%<extra></extra>"
+      },
+      {
+        x: labels, y: fhVals, name: "Latent Foothold (P_FH)", type: "bar",
+        marker: { color: "#E69F00" },
+        hovertemplate: "<b>Latent Foothold</b>: %{y:.2f}%<extra></extra>"
+      },
+      {
+        x: labels, y: paspVals, name: "Compromised (PAS-P)", type: "bar",
+        marker: { color: "#D55E00" },
+        hovertemplate: "<b>Compromised (PAS-P)</b>: %{y:.2f}%<extra></extra>"
+      }
+    ];
+
+    Plotly.react("plot-fh-stack", stackTraces, {
+      barmode: "stack",
+      margin: { t: 48, r: 16, b: 48, l: 56 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      font: { family: "Georgia, 'Times New Roman', serif", size: 12, color: "#0f172a" },
+      title: { text: `State-Space Partition at t = ${Math.round(actualT)} h`, font: { size: 14 } },
+      yaxis: { title: "Probability Mass (%)", range: [0, 102], ticksuffix: "%", gridcolor: "#e2e8f0" },
+      legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.22 }
+    }, { responsive: true, displaylogo: false });
+
+    // Transient foothold wave P_FH(t)
+    const waveTraces = MTD_ONLY.map(s => {
+      const paspArr = DATA.metrics.pas_p[s.id].mean;
+      const elusArr = DATA.metrics.elusiveness[s.id].mean;
+      const fhArr = TIME.map((_, i) => Math.max(0, (100.0 - paspArr[i]) - elusArr[i]));
+      return {
+        x: TIME,
+        y: fhArr,
+        name: `MTD ${s.id}`,
+        type: "scatter",
+        mode: "lines",
+        line: { color: s.color, width: 2.2, dash: s.dash },
+        hovertemplate: `<b>MTD ${s.id} P_FH</b>: %{y:.2f}%<extra></extra>`
+      };
+    });
+
+    Plotly.react("plot-fh-wave", waveTraces, {
+      margin: { t: 48, r: 16, b: 48, l: 56 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      font: { family: "Georgia, 'Times New Roman', serif", size: 12, color: "#0f172a" },
+      title: { text: "Transient Latent Foothold Wave P_FH(t)", font: { size: 14 } },
+      hovermode: "x unified",
+      xaxis: { title: "Time (hours)", range: [0, 720], dtick: 120, gridcolor: "#e2e8f0" },
+      yaxis: { title: "Latent Foothold P_FH (%)", range: [0, 32], ticksuffix: "%", gridcolor: "#e2e8f0" },
+      legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.22 },
+      shapes: [{
+        type: "line", x0: actualT, x1: actualT, y0: 0, y1: 32,
+        line: { color: "#0f172a", width: 1.3, dash: "dot" }
+      }]
+    }, { responsive: true, displaylogo: false });
+  }
+
+  // ===== MODULE 4: DOWNLOADS HUB =====
+  function filterDownloads(m) {
+    activeDlFilter = m;
+    document.querySelectorAll("[data-dlfilter]").forEach(b => {
+      b.classList.toggle("active", b.dataset.dlfilter === m);
+    });
+    renderDownloads();
+  }
+
+  function renderDownloads() {
+    const tbody = document.getElementById("downloads-tbody");
+    tbody.innerHTML = "";
+    DATA.files
+      .filter(f => activeDlFilter === "all" || f.metric === activeDlFilter)
+      .forEach(f => {
+        const sObj = SCHEDS.find(s => s.id === f.schedule);
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono">${f.filename}</td>
+          <td>${f.metric_short}</td>
+          <td><span class="swatch" style="background:${sObj.color}; margin-right:6px;"></span>${f.schedule_label}</td>
+          <td class="mono">${f.n_samples.toLocaleString()}</td>
+          <td class="mono">${f.val_720.toFixed(2)}% &plusmn; ${f.hw_720.toFixed(2)} pp</td>
+          <td class="mono">${f.size_kb.toFixed(1)} KB</td>
+          <td><a class="btn small" href="data/${f.filename}" download>Download CSV</a></td>
+        `;
+        tbody.appendChild(tr);
+      });
+  }
+
+  function copyBibtex() {
+    const txt = document.getElementById("bibtex-code").textContent;
+    navigator.clipboard.writeText(txt).then(() => {
+      const btn = document.getElementById("btn-copy-bib");
+      btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = "Copy BibTeX"; }, 1800);
+    });
+  }
+
+  // ===== BOOTSTRAP =====
+  window.addEventListener("DOMContentLoaded", () => {
+    initScheduleToggles();
+    renderTransient();
+    renderComposite();
+    renderFoothold();
+    renderDownloads();
+  });
+</script>
+</body>
+</html>
