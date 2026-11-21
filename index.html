@@ -613,10 +613,45 @@
           </table>
         </div>
         <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.6rem;">
-          <strong>Note:</strong> Baseline cumulative exposure over <span id="note-h">720</span> h equals
+          <strong>Note:</strong> Baseline lost compromise-free time over <span id="note-h">720</span> h equals
           <span class="mono" id="note-bnp">695.53</span> h (non-persistent) and <span class="mono" id="note-bp">695.16</span> h (persistent).
           Green highlight marks the lowest-overhead schedule meeting the protection target.
         </p>
+      </div>
+    </div>
+
+    <!-- Sub-panel: Estimated Persistent Attacker-Cost Inflation & Marginal Asymmetry Ratio -->
+    <div style="margin-top:1.35rem; padding-top:1.15rem; border-top:1px solid var(--border);">
+      <h3 style="margin:0 0 0.35rem; font-size:1.0rem; color:var(--text);">
+        Estimated Attacker Time-Cost Inflation &amp; Marginal Asymmetry (Persistent Threat, <em>H</em> = <span id="asym-h-label">720</span> h)
+      </h3>
+      <p style="margin:0 0 0.85rem; font-size:0.84rem; color:var(--text-muted);">
+        Estimates expected compromise-free time (<strong>RMTTC<sub>P</sub></strong> = <em>H</em> &minus; AUC<sub>P</sub>),
+        attacker effort inflation (<strong>EIF<sub>P</sub></strong> = RMTTC<sub>P</sub> / RMTTC<sub>P,Base</sub>),
+        pre-compromise MTD downtime (<strong>DT<sub>pre</sub></strong> = [<em>d</em>/(<em>T</em>+<em>d</em>)] &middot; RMTTC<sub>P</sub>, with <em>d</em> = 4 s),
+        and marginal return (<strong>&Delta;RMTTC<sub>P</sub> / &Delta;DT<sub>pre</sub></strong>) per tightening step.
+      </p>
+      <div class="grid-2-eq">
+        <div id="plot-asymmetry" class="plot-box-compact" style="min-height:300px;"></div>
+        <div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Schedule</th>
+                  <th>RMTTC<sub>P</sub> (h)</th>
+                  <th>EIF<sub>P</sub> (&times;)</th>
+                  <th>DT<sub>pre</sub> (h)</th>
+                  <th>Marginal Return</th>
+                </tr>
+              </thead>
+              <tbody id="asymmetry-tbody"></tbody>
+            </table>
+          </div>
+          <p style="font-size:0.76rem; color:var(--text-muted); margin-top:0.55rem;" id="asym-trunc-note">
+            *Estimates for schedules with high residual survival at <em>H</em> represent lower bounds truncated at the evaluation horizon.
+          </p>
+        </div>
       </div>
     </div>
   </section>
@@ -712,7 +747,8 @@
         <tbody id="downloads-tbody"></tbody>
       </table>
     </div>
-<!--
+
+    <!--
     <div style="margin-top:1.25rem;">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
         <h3 style="margin:0; font-size:0.95rem;">How to Cite</h3>
@@ -726,7 +762,6 @@
   note    = {Interactive companion dashboard and raw TimeNET datasets available at \url{https://matheustor4.github.io/mtd-multithreat-dashboard/}}
 }</pre>
     </div>
-    
     -->
   </section>
 
@@ -1156,6 +1191,97 @@
       `;
       tbody.appendChild(tr);
     });
+
+    // Render Attacker Time-Cost Inflation & Marginal Asymmetry sub-panel
+    const T_SEC = { "60m": 3600.0, "45m": 2700.0, "30m": 1800.0, "15m": 900.0 };
+    const D_SEC = 4.0;
+    const rmttcBaseP = Math.max(0.0, actualH - bP);
+    document.getElementById("asym-h-label").textContent = Math.round(actualH);
+
+    const asymBody = document.getElementById("asymmetry-tbody");
+    asymBody.innerHTML = "";
+    const baseTr = document.createElement("tr");
+    baseTr.innerHTML = `
+      <td><span class="swatch" style="background:#000000; margin-right:6px;"></span><strong>Baseline</strong></td>
+      <td class="mono">${rmttcBaseP.toFixed(2)}</td>
+      <td class="mono">1.0&times;</td>
+      <td class="mono">0.00</td>
+      <td class="mono">&mdash;</td>
+    `;
+    asymBody.appendChild(baseTr);
+
+    const stepLabels = [];
+    const stepVals = [];
+    const stepColors = [];
+    const stepCustom = [];
+
+    let prevRmttc = null;
+    let prevDt = null;
+    let prevId = null;
+
+    rows.forEach(r => {
+      const rmttcP = Math.max(0.0, actualH - r.aP);
+      const eifP = rmttcBaseP > 0 ? (rmttcP / rmttcBaseP) : 0.0;
+      const uMtd = D_SEC / (T_SEC[r.id] + D_SEC);
+      const dtPre = rmttcP * uMtd;
+      const survAtH = Math.max(0.0, 100.0 - DATA.metrics.pas_p[r.id].mean[idxH]);
+      const star = survAtH > 50.0 ? "*" : "";
+      let mar = null;
+      if (prevRmttc !== null && dtPre > prevDt) {
+        mar = (rmttcP - prevRmttc) / (dtPre - prevDt);
+        stepLabels.push(`${prevId} &rarr; ${r.id}`);
+        stepVals.push(mar);
+        stepColors.push(r.color);
+        stepCustom.push([rmttcP - prevRmttc, dtPre - prevDt, star]);
+      }
+      r.rmttcP = rmttcP;
+      r.eifP = eifP;
+      r.dtPre = dtPre;
+      r.marP = mar;
+
+      const tr = document.createElement("tr");
+      if (r.id === "30m") tr.className = "recommended-row";
+      tr.innerHTML = `
+        <td><span class="swatch" style="background:${r.color}; margin-right:6px;"></span><strong>${r.id}</strong></td>
+        <td class="mono">${rmttcP.toFixed(2)}${star}</td>
+        <td class="mono">${eifP.toFixed(1)}&times;${star}</td>
+        <td class="mono">${dtPre.toFixed(2)}${star}</td>
+        <td class="mono"><strong>${mar !== null ? mar.toFixed(0) + " h/h" + star : "&mdash;"}</strong></td>
+      `;
+      asymBody.appendChild(tr);
+
+      prevRmttc = rmttcP;
+      prevDt = dtPre;
+      prevId = r.id;
+    });
+
+    const maxMar = Math.max(...stepVals, 100);
+    Plotly.react("plot-asymmetry", [{
+      x: stepLabels,
+      y: stepVals,
+      type: "bar",
+      marker: { color: stepColors },
+      text: stepVals.map((v, i) => `${v.toFixed(0)} h/h${stepCustom[i][2]}`),
+      textposition: "outside",
+      customdata: stepCustom,
+      hovertemplate:
+        "<b>%{x}</b><br>" +
+        "Marginal Return: <b>%{y:.1f} h/h</b><br>" +
+        "Extra Safe Time: +%{customdata[0]:.1f} h<br>" +
+        "Extra Pre-Comp. DT: +%{customdata[1]:.2f} h<extra></extra>"
+    }], {
+      margin: { t: 38, r: 16, b: 42, l: 62 },
+      paper_bgcolor: "#ffffff",
+      plot_bgcolor: "#ffffff",
+      font: { family: "Georgia, 'Times New Roman', serif", size: 12, color: "#0f172a" },
+      title: { text: "Estimated Marginal Return (&Delta;RMTTC<sub>P</sub> / &Delta;DT<sub>pre</sub>)", font: { size: 13 } },
+      yaxis: { title: "Extra Safe Hours / Downtime Hour", range: [0, maxMar * 1.22], gridcolor: "#e2e8f0" },
+      xaxis: { tickfont: { size: 11.5 } }
+    }, {
+      responsive: true,
+      displaylogo: false,
+      toImageButtonOptions: { format: "png", filename: `MTD_Marginal_Asymmetry_H${H}`, scale: 2 }
+    });
   }
 
   function exportCompositeCSV() {
@@ -1163,13 +1289,15 @@
     const H = document.getElementById("slider-horizon").value;
     const target = document.getElementById("slider-target").value;
     const lines = [
-      `# MTD Composite Protective Effect Export (w_P=${wpPct}%, H=${H}h, Target=${target}%)`,
-      "Schedule,Rotations_in_H,AUC_NP_hours,Delta_AUC_NP_pct,AUC_P_hours,Delta_AUC_P_pct,PE_Harmonic_pct,PE_Arithmetic_pct,Meets_Target"
+      `# MTD Composite Protective Effect & Asymmetry Export (w_P=${wpPct}%, H=${H}h, Target=${target}%)`,
+      "Schedule,Rotations_in_H,AUC_NP_hours,Delta_AUC_NP_pct,AUC_P_hours,Delta_AUC_P_pct,PE_Harmonic_pct,PE_Arithmetic_pct,Meets_Target,RMTTC_P_hours,EIF_P_x,DT_pre_P_hours,Marginal_Asymmetry_h_per_h"
     ];
     latestCompositeRows.forEach(r => {
       lines.push([
         r.id, r.rot, r.aNP.toFixed(4), r.dNP.toFixed(4),
-        r.aP.toFixed(4), r.dP.toFixed(4), r.peH.toFixed(4), r.peA.toFixed(4), r.meets
+        r.aP.toFixed(4), r.dP.toFixed(4), r.peH.toFixed(4), r.peA.toFixed(4), r.meets,
+        r.rmttcP.toFixed(4), r.eifP.toFixed(4), r.dtPre.toFixed(4),
+        r.marP !== null ? r.marP.toFixed(2) : ""
       ].join(","));
     });
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
